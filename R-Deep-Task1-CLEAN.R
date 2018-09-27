@@ -1,11 +1,14 @@
 #https://en.selectra.info/energy-france/guides/electricity-cost#
+#Mutate etc# #https://jules32.github.io/2016-07-12-Oxford/dplyr_tidyr/#
 
 #### Installing and Calling libraries####
 
 install.packages("chron")
-library("chron")
-source("calendarHeat.R")
+
 source("https://raw.githubusercontent.com/iascchen/VisHealth/master/R/calendarHeat.R")
+source("calendarHeat.R")
+install.packages("chron")
+library("chron")
 install.packages("tidyr")
 install.packages("lubridate")
 install.packages("hydroTSM")
@@ -14,7 +17,10 @@ install.packages("bdvis")
 install.packages("magrittr")
 install.packages("RColorBrewer")
 install.packages("grid")
+install.packages("zoo")
 
+library(zoo)
+library(caret)
 library(tidyr)
 library(dplyr)
 library(timeDate)
@@ -44,6 +50,20 @@ household$DateTime <- with_tz(household$DateTime, "Europe/Paris")
 #household$Date<-as.POSIXct(household$DateTime,tz= "Europe/Paris" )
 str(household)
 
+####Finding NAs####
+MatrixOfNAs<- filter(household, is.na(Global_active_power))
+RowsOfNAs<- which(is.na(household$Global_active_power))
+write.csv(RowsOfNAs, "typeofna.csv")
+
+sum(is.na(household))
+
+####Replacing NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
+household$Global_active_power<- na.locf(household$Global_active_power, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+sum(is.na(household$Global_active_power))#to see how many NA
+
+####Replacing rest of NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
+household$Global_active_power[is.na(household$Global_active_power)]<-0
+sum(is.na(household$Global_active_power))
 
 ####Create Month, Day, WeekDay, Season column####
 household$Hora <- hour(household$DateTime)
@@ -55,7 +75,7 @@ sum(is.na(household$Mes))
 household$Dia <- day(household$DateTime)
 sum(is.na(household$Dia))
 
-household$DiaSemana <- wday(household$DateTime)
+household$DiaSemana <- wday(household$DateTime, label = TRUE, abbr = FALSE)
 sum(is.na(household$DiaSemana))
 
 household$Season<- quarter(household$DateTime)
@@ -76,92 +96,103 @@ sum(is.na(household$SeasonWNames))
 household$Any<- year(household$DateTime)
 sum(is.na(household$Any))
 
-####Mutating data in minutes to hours, so we compare apples with apples####
+####Exclude NAs from the graphs####
 na.exclude(household)
-HOUSE<- household %>% group_by(Any, Mes, Dia, Hora) %>% summarise(Global_active_powerkWh = sum(Global_active_power))
-View(household)
-View(HOUSE)
 
-household%>% group_by(Any, Mes, Dia, Hora) %>% mutate(Global_active_powerkWh = sum(Global_active_power)) %>% ungroup()
-str(household)
 
-#https://jules32.github.io/2016-07-12-Oxford/dplyr_tidyr/
-household %>%
-  mutate(KWH = Global_active_power *60) 
-  
+####PRE-GRAPHS####
+###New Columns###
+household$Date <- as.Date(household$Date, "%d/%m/%Y")
 
-####OVERALL GRAPHS####
-#### Data Overview #### 
-## Heat maps 
-calendarHeat1 <- calendarHeat(household$Date, HOUSE$Global_active_powerkWh, varname="Global Active Power (kWh)", color="r2b") 
-calendarHeat2 <- calendarHeat(householdpower$Date, householdpower$Global_reactive_powerkWh, varname="Global Reactive Power (kWh)", color="r2b") 
 
-## Monthly consumption summary by year 
-ggplot(data = HOUSE, aes(x = Any, y = Global_active_powerkWh, group = Any, colour = Any)) +
-  geom_line()+
-  theme_bw()+ 
-  geom_point()+facet_wrap(facets = Any ~ .) 
+###Columns with same Energy Measuring Metrics###
+household<-household %>% mutate(Global_ConsumptionKWh=((household$Global_active_power)/60))
+household<-household %>% mutate(Global_Consumption_reactiveKWh=((household$Global_reactive_power)/60))
+household<-household %>% mutate(Submetter1_kwh=(household$Sub_metering_1/1000))
+household<-household %>% mutate(Submetter2_kwh=(household$Sub_metering_2/1000))
+household<-household %>% mutate(Submetter3_kwh=(household$Sub_metering_3/1000))
 
-ggplot(data=HOUSE, aes(x=Mes, y=Global_active_powerkWh, group=Any,colour=Any)) +   
-  geom_line()+theme_bw()+   geom_point()+facet_grid(facets = Any ~ ., margins = FALSE) 
+household2<- na.exclude(household)
 
-## Monthly consumption by year
-HOUSE$Mes <- factor(HOUSE$Month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) 
-ggplot(data=HOUSE, aes(HOUSE$Mes,group=1))
-+ geom_line(aes(y = hpc_monthly$Sub_metering_1kWh, color="Kitchen")) 
-+geom_line(aes(y = hpc_monthly$Sub_metering_2kWh, color="Laundry Room")) 
-+ geom_line(aes(y = hpc_monthly$Sub_metering_3kWh, color="Heater")) 
-+   geom_line(aes(y = hpc_monthly$Global_active_powerkWh, color="Active_Power_kWh")) 
-+  geom_line(aes(y = hpc_monthly$Global_reactive_powerkWh, color="Reactive_Power_kWh")) 
-+   xlab("Year") 
-+   ylab("kWh") 
-+   ggtitle("Global Active Power by Time")   
-+ scale_x_discrete(labels =  month.abb) 
-+scale_x_date(labels = date_format("%b"))
-+   theme(panel.background = element_rect(fill = rgb(248, 236, 212, maxColorValue = 255)))
-  +   theme_bw()+   scale_y_continuous(labels = function(x) format(x, scientific =FALSE))
-+   scale_colour_manual(name='', values=c('Active_Power_kWh'="#CC6666",  'Kitchen', 'Reactive_Power_kWh'="blue", 'Laundry Room'="blue", 'Heater'="darkgreen", guide='legend'))
-+ facet_wrap( ~ Year )  
-+facet_grid(facets = Year ~ ., margins = FALSE)
 
-## Heat maps
-calendarHeat1 <- calendarHeat(householdpower$Date, householdpower$Global_active_powerkWh,varname="Global Active Power (kWh)",color="r2b")
+#####CONSUMPTION REACTIVE PER SUM###
+household_MONTHYEAR<-household2 %>% select(Any,Mes,Global_active_power, Global_reactive_power,Global_ConsumptionKWh ,Global_Consumption_reactiveKWh,Submetter3_kwh,
+                         Submetter2_kwh,Submetter1_kwh) %>%
+  group_by(Any,Mes)%>% 
+  #Global_Consumption_reactive=sum(Global_Consumption_reactive))
+  summarise_at(vars(Global_ConsumptionKWh,Global_Consumption_reactiveKWh,Submetter3_kwh,
+                    Submetter2_kwh,Submetter1_kwh),
+               funs(sum))
 
-calendarHeat2 <- calendarHeat(householdpower$Date, householdpower$Global_reactive_powerkWh,varname="Global Reactive Power (kWh)",color="r2b")
+####June per hour each Year####
+household3_hour<-household2 %>% select(Any,Mes,Hora,Global_ConsumptionKWh,Global_Consumption_reactiveKWh,
+                           Sub_metering_3,Submetter3_kwh,
+                           Submetter2_kwh,Submetter1_kwh) %>%
+  filter(Mes==6 & Any!=2006) %>%
+  group_by(Any,Mes,Hora)%>% 
+  #Global_Consumption_reactive=sum(Global_Consumption_reactive)
+  summarise_at(vars(Global_ConsumptionKWh, Global_Consumption_reactiveKWh ,Submetter3_kwh,Submetter2_kwh,Submetter1_kwh),funs(sum))
 
-## Monthly consumption summary by year
-ggplot(data = hpc_monthly, aes(x = Month_Abb, y = Global_active_powerkWh, group = Year, colour = Year)) 
-+geom_line()
-+theme_bw()
-+geom_point()
-+facet_wrap(facets = Year ~ .)
+####Gives you the name of the month in the graphs as a factor####
+household_MONTHYEAR<- transform(household_MONTHYEAR, MonthAbb = month.abb[Mes])
 
-ggplot(data=HPC_my, aes(x=MonthAbb, y=Global_powerKwh, group=Year,colour=Year)) 
-+geom_line()+theme_bw()
-+geom_point()
-+facet_grid(facets = Year ~ ., margins = FALSE)
+####Puts them in order####
+household_MONTHYEAR$MonthAbb <-factor(household_MONTHYEAR$MonthAbb, 
+                                    levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+####plots####
+hist(household$Global_ConsumptionKWh,
+     col="red", 
+     main="Global Active Power", 
+     xlab="Global Active Power (kilowatts/h)")
 
-## Monthly consumption by year
-hpc_monthly$Month_Abb <- factor(hpc_monthly$Month_Abb,levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+ggplot(data=household_MONTHYEAR, aes(x= Mes, y=Global_ConsumptionKWh, group=Any, colour=Any)) +
+  geom_line()+theme_bw()+ geom_point()+facet_wrap(facets = Any ~ .)#, margins = FALSE)
 
-ggplot(data=hpc_monthly, aes(hpc_monthly$Month,group=1))
-+geom_line(aes(y = hpc_monthly$Sub_metering_1kWh, color="Kitchen")) 
-+geom_line(aes(y = hpc_monthly$Sub_metering_2kWh, color="Laundry Room")) 
-+geom_line(aes(y = hpc_monthly$Sub_metering_3kWh, color="Heater")) 
-+geom_line(aes(y = hpc_monthly$Global_active_powerkWh, color="Active_Power_kWh")) 
-+geom_line(aes(y = hpc_monthly$Global_reactive_powerkWh, color="Reactive_Power_kWh")) 
-+xlab("Year") 
-+ylab("kWh") 
-+ggtitle("Global Active Power by Time")
-+scale_x_discrete(labels =  month.abb) 
-+scale_x_date(labels = date_format("%b"))
-+theme(panel.background = element_rect(fill = rgb(248, 236, 212, maxColorValue = 255)))
-+theme_bw()
-+scale_y_continuous(labels = function(x) format(x, scientific =FALSE))
-+scale_colour_manual(name='',values=c('Active_Power_kWh'="CC6666",  'Kitchen','Reactive_Power_kWh'="blue", 'Laundry Room'="blue",'Heater'="darkgreen",guide='legend'))
-                                      + facet_wrap( ~ Year )
-                                      +facet_grid(facets = Year ~ ., margins = FALSE)
 
+####ENERGY CONSUMPTION PER MONTH####
+ggplot(data=household_MONTHYEAR, aes(household_MONTHYEAR$MonthAbb, group=1))+
+  #geom_line(aes(y = HPC_My2006$Submetter1_kwh, color="Kitchen")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter2_kwh, color="Laundry Room")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter3_kwh, color="Heater")) + 
+  geom_line(aes(y = household_MONTHYEAR$Global_ConsumptionKWh, color="Active_Power"))+
+  geom_line(aes(y = household_MONTHYEAR$Global_Consumption_reactiveKWh, color="Reactive_Power"))+
+  xlab("Year")+
+  ylab("KWh")+
+  ggtitle("Energy Consumption by Month")+
+  scale_y_continuous(labels = function(x) format(x, scientific =FALSE))+
+  facet_wrap( ~ Any)
+#facet_grid(facets = Any ~ ., margins = FALSE) 
+
+
+####Calendar Heat####
+library("chron")
+calendarHeat(household$Date, household$Global_Consumption_reactiveKWh, varname="Global_reActive_Power")
+summary(household)
+
+
+####9####
+ggplot(data=household3_My2006, aes(household3_My2006$MonthAbb,group=1))+
+  #geom_line(aes(y = HPC_My2006$Submetter1_kwh, color="Kitchen")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter2_kwh, color="Laundry Room")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter3_kwh, color="Heater")) + 
+  geom_line(aes(y = household3_My2006$Global_ConsumptionKWh, color="Active_Power"))+
+  geom_line(aes(y = household3_My2006$Global_reactiveKWh, color="Reactive_Power"))+
+  xlab("Year")+
+  ylab("KWh")+
+  ggtitle("Energy Consumption by Month")+
+  #scale_x_discrete(labels=  month.abb) + 
+  #scale_x_date(labels = date_format("%b"))+
+  #theme(panel.background = element_rect(fill = rgb(248, 236, 212, maxColorValue = 255)))+
+  #theme_bw()+
+  scale_y_continuous(labels = function(x) format(x, scientific =FALSE))+
+  #scale_colour_manual(name='', 
+  #  values=c('Active_Power'="#CC6666"), # Kitchen',
+  #'Reactive_Power'="blue"), #Laundry Room'="blue", 
+  #'Heater'="darkgreen"), 
+  #guide='legend') +
+  facet_wrap( ~ Any )
+#facet_grid(facets = Year ~ ., margins = FALSE) 
 
 ####Cambio de hora#### #there is a function for that#
 household$DateTime<- dst(household$DateTime)
@@ -174,10 +205,13 @@ write.csv(TYPEOFNA, "typeofna.csv")
 
 sum(is.na(household))
 
-TYPEOFNA2<-which(is.na(household$Global_active_power))
-write.csv(TYPEOFNA2, "typeofna2.csv")
+####Replacing NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
+household$Global_active_power<- na.locf(household$Global_active_power, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
 
-write.csv(OutOfHome, "outofhomedates.csv")
+####Replacing rest of NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
+is.na(household$Global_active_power)<- 0
+
+
 
 ####Replacing NAs of several days out with 0####
 household[190498:194220,]$Global_active_power<- 0
