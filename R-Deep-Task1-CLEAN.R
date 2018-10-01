@@ -6,6 +6,7 @@
 install.packages("chron")
 
 source("https://raw.githubusercontent.com/iascchen/VisHealth/master/R/calendarHeat.R")
+devtools::install_github("hrbrmstr/taucharts")
 source("calendarHeat.R")
 install.packages("chron")
 library("chron")
@@ -19,7 +20,13 @@ install.packages("RColorBrewer")
 install.packages("grid")
 install.packages("zoo")
 install.packages("padr")
+install.packages("ggalt")
+install.packages("taucharts")
+install.packages("doBy")
 
+library(doBy)
+library(taucharts)
+library(ggalt)
 library(padr)
 library(zoo)
 library(caret)
@@ -52,17 +59,16 @@ household$DateTime <- with_tz(household$DateTime, "Europe/Paris")
 #household$Date<-as.POSIXct(household$DateTime,tz= "Europe/Paris" )
 str(household)
 
+
+
+
 ####APPLY DAYLIGHT SAVINGS####
 #https://cran.r-project.org/web/packages/padr/vignettes/padr_implementation.html
 #Define a time Period#
 SET_2007_SummerTime  <- interval(ymd_hms('2007-03-25 2:00:00'), ymd_hms('2007-10-28 2:59:00'))
-SET_2007_WinterTime  <- interval(ymd_hms('2007-10-28 3:00:00'), ymd_hms('2008-03-25 1:59:00'))
 SET_2008_SummerTime  <- interval(ymd_hms('2008-03-25 2:00:00'), ymd_hms('2008-10-28 2:59:00'))
-SET_2008_WinterTime  <- interval(ymd_hms('2008-10-28 3:00:00'), ymd_hms('2009-03-25 1:59:00'))
 SET_2009_SummerTime  <- interval(ymd_hms('2009-03-25 2:00:00'), ymd_hms('2009-10-28 2:59:00'))
-SET_2009_WinterTime  <- interval(ymd_hms('2009-10-28 3:00:00'), ymd_hms('2010-03-25 1:59:00'))
 SET_2010_SummerTime  <- interval(ymd_hms('2010-03-25 2:00:00'), ymd_hms('2010-10-28 2:59:00'))
-SET_2010_WinterTime  <- interval(ymd_hms('2010-10-28 3:00:00'), ymd_hms('2011-03-25 1:59:00'))
 SET_2011_SummerTime  <- interval(ymd_hms('2011-03-25 2:00:00'), ymd_hms('2011-10-28 2:59:00'))
 
 ####THE NEW FUNCTION WAS TAKING WAS TOO LONG TO RUN####
@@ -79,33 +85,27 @@ SET_2011_SummerTime  <- interval(ymd_hms('2011-03-25 2:00:00'), ymd_hms('2011-10
   #}
 
 #household$DateTime <- sapply(household$DateTime, Daylight_func)
+household$SDateTime <- if(( household$DateTime %in% SET_2007_SummerTime) | (household$DateTime %in% SET_2008_SummerTime)
+| (household$DateTime %in% SET_2009_SummerTime) |(household$DateTime %in% SET_2010_SummerTime)){household$DateTime +dhours(1)}
+else{household$DateTime +dhours(0)}
+                           
 
 
-household$DateTime<- ifelse(household$DateTime %in% SET_2007_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} , 
-                            ifelse(household$DateTime %in% SET_2007_WinterTime,{household$DateTime <- with_tz(household$DateTime,tz= "CET")} ,
-                                   ifelse(household$DateTime %in% SET_2008_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
-                                          ifelse(household$DateTime %in% SET_2008_WinterTime,{household$DateTime <- with_tz(household$DateTime,tz= "CET")},
-                                                 ifelse(household$DateTime %in% SET_2009_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
-                                                        ifelse(household$DateTime %in% SET_2009_WinterTime, {household$DateTime <- with_tz(household$DateTime,tz= "CET")},
-                                                               ifelse(household$DateTime %in% SET_2010_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
-                                                                      ifelse(household$DateTime %in% SET_2010_WinterTime, {household$DateTime <- with_tz(household$DateTime,tz= "CET")},
-                                                                             { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ))))))))
+#Now the times changed into seconds#
+####CHANGING BACK THE FORMAT OF DATE TIME####
+household$DateTime<- as.POSIXct(household$DateTime, origin = "1970-01-01")
 
 
 ####Checking that Changes summer to winter Hours and winter to Summer were properly made####
 household[141577,]$DateTime #Ok
 household[141576,]$DateTime
-
-
-which(household$DateTime == "2007-10-28 3:00:00") #OK
-household[454117,]$DateTime
-household[454056,]$DateTime
 as.POSIXct(1193536800, origin = "1970-01-01", tz = "Europe/Paris") #To see what the Seconds strip of time means in Date#
-as.POSIXct(1193533140, origin = "1970-01-01", tz = "Europe/Paris")
+as.POSIXct(1193536860, origin = "1970-01-01", tz = "Europe/Paris") #https://stat.ethz.ch/R-manual/R-devel/library/base/html/as.POSIXlt.html
 
+####DAYLIGHT SAVINGS ONLY WORKING ON THE FIRST CHANFE
 which(household$DateTime == "2008-03-25 2:00:00")
 household[668617,]$DateTime
-household[668677,]$DateTime
+household[668618,]$DateTime
 
 which(household$DateTime == "2008-10-28 3:00:00")
 household[981157,]$DateTime
@@ -113,7 +113,8 @@ household[,]$DateTime
 
 which(household$DateTime == "2009-03-25 2:00:00")
 household[1194217,]$DateTime
-household[,]$DateTime
+household[1194240,]$DateTime
+as.POSIXct(1237944180, origin = "1970-01-01", tz = "Europe/Paris")
 
 which(household$DateTime == "2009-10-28 3:00:00")
 household[1506757,]$DateTime
@@ -160,13 +161,21 @@ household$Sub_metering_1[is.na(household$Sub_metering_1)]<-0
 household$Sub_metering_2[is.na(household$Sub_metering_2)]<-0
 household$Sub_metering_3[is.na(household$Sub_metering_3)]<-0
 
+sum(is.na(household))
 
+
+###Columns with SAME ENERGY MEASURING METRICS###
+household<-household %>% mutate(Global_ConsumptionKWh=((household$Global_active_power)/60))
+household<-household %>% mutate(Global_Consumption_reactiveKWh=((household$Global_reactive_power)/60))
+household<-household %>% mutate(Submetter1_kwh=(household$Sub_metering_1/1000))
+household<-household %>% mutate(Submetter2_kwh=(household$Sub_metering_2/1000))
+household<-household %>% mutate(Submetter3_kwh=(household$Sub_metering_3/1000))
 
 ####Create Month, Day, WeekDay, Season column####
 household$Hora <- hour(household$DateTime)
 sum(is.na(household$Hora))
 
-household$Mes <- month(household$DateTime)
+household$Mes <- month(household$Date)
 sum(is.na(household$Mes))
 
 household$Dia <- day(household$DateTime)
@@ -193,18 +202,225 @@ sum(is.na(household$SeasonWNames))
 household$Any<- year(household$DateTime)
 sum(is.na(household$Any))
 
+####LINEAR CORRELATION BETWEEN ATTRIBUTES TO DELETE SOME ALREADY AND SIMPLIFY ALL COMPUTING PROCESSES###
+#TO DO HERE: Correlation Matrix#
+
+
+
+
+
+
+
+
+
+
+
+####CREATING INITIAL SUBSETS###
+#1s Merge the hours to reduce input#
+household2<- household #creating a new exact subset to be able to step backwards easily if needed
+household2$Global_active_power<- NULL
+household2$Global_reactive_power<- NULL
+household2$Global_intensity<- NULL
+household2$Voltage<- NULL
+household2$Sub_metering_1<- NULL
+household2$Sub_metering_2<- NULL
+household2$Sub_metering_3<- NULL
+
+View(household2)
+str(household2)
+
+####HOUSEHOLD HISTOGRAM PER SEASON ###
+householdSeason<- household2
+
+householdSeason<- householdSeason%>% group_by(SeasonWNames)%>% mutate(SumaSeasonKW = sum(Global_ConsumptionKWh))
+
+householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonReactiveKW = sum(Global_Consumption_reactiveKWh))
+
+householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonKitchenKW = sum(Submetter1_kwh))
+
+householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonLaundryKW = sum(Submetter2_kwh))
+
+householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonHeaterKW = sum(Submetter3_kwh))
+
+householdSeasonGood<- householdSeason
+  
+householdSeasonGood<- select(householdSeasonGood, Any, SeasonWNames,SumaSeasonKW,SumaSeasonReactiveKW,SumaSeasonLaundryKW,SumaSeasonHeaterKW )
+
+View(householdSeasonGood)
+
+householdSeasonGood<- distinct(householdSeasonGood)
+
+
+####QUICK PLOTTING OF TOTAL CONSUMPTION PER SEASON### #http://www.cookbook-r.com
+ggplot(data=householdSeasonGood, aes(x=SeasonWNames, y=SumaSeasonKW, fill=Any)) +
+  facet_wrap( ~ Any)+ geom_bar(stat="identity", position=position_dodge())
+
+
+
+
+####HOUSEHOLD OBSERVATIONS distribution ###
+household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>% mutate(SumaHoraKW = sum(Global_ConsumptionKWh))
+                                                           
+household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHoraReKW = sum(Global_Consumption_reactiveKWh))
+
+household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaKitchenKW = sum(Submetter1_kwh))
+
+household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaLaundryKW = sum(Submetter2_kwh))
+
+household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHeaterKW = sum(Submetter3_kwh))
+
+unique(household2$SumaHoraKW)
+unique(household2$SumaHoraReKW)
+unique(household2$SumaKitchenKW)
+unique(household2$SumaLaundryKW)
+unique(household2$SumaHeaterKW)
+
+DIAMESHORA<- household2
+str(DIAMESHORA)
+
+View(DIAMESHORA)
+
+DIAMESHORA<- select(DIAMESHORA, DateTime, Any, Hora, Mes, Dia,DiaSemana,SumaHoraKW,SumaHoraReKW,SumaKitchenKW,SumaLaundryKW,SumaHeaterKW)
+str(DIAMESHORA)
+View(DIAMESHORA)
+
+DIAMESHORA2<- DIAMESHORA
+DIAMESHORA2$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H:%M:%S'),format='%m/%d/%Y %H') #to collapse all Date Times per hour
+DIAMESHORA2<-distinct(DIAMESHORA2)
+DIAMESHORA2
+
+DIAMESHORA2$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H'),format='%m/%d/%Y %H:%M:%S')  #To give DateTime a time format again
+
+DIAMESHORA2$DateTime <- with_tz(DIAMESHORA2$DateTime, "Europe/Paris")
+names(DIAMESHORA2)
+View(DIAMESHORA2)
+
+
+
+#Multiple Graphs
+#Line Graph WeekDay, Hour, Active Consumption#
+####Need to put All Hours into Days####
+####Then the Days should be out of 365####
+DIAMESHORA3<- DIAMESHORA2
+DIAMESHORA3$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H'),format='%m/%d/%Y')  #To give DateTime a time format again
+DIAMESHORA3<- select(DIAMESHORA,DateTime, Any, Hora, Mes, Dia,DiaSemana,SumaHoraKW,SumaHoraReKW,SumaKitchenKW,SumaLaundryKW,SumaHeaterKW)
+DIAMESHORA3<- distinct(DIAMESHORA3) 
+
+
+DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKW = sum(SumaHoraKW))
+DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaReKW = sum(SumaHoraReKW))
+DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKitchen = sum(SumaKitchenKW))
+DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaLaundry = sum(SumaLaundryKW))
+DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaHeater = sum(SumaHeaterKW))
+
+
+
+DIAMESHORA3$DiaDelAny<-""
+DIAMESHORA3$DiaDelAny<- strftime(DIAMESHORA3$DateTime, format = "%j")####to see which Day of the year it is
+
+unique(DIAMESHORA3$DiaDelAny)
+DIAMESHORA3$DiaDelAny<-as.numeric(DIAMESHORA3$DiaDelAny)
+
+
+DIAMESHORA3$SumaHoraKW<- NULL
+DIAMESHORA3$SumaHoraReKW<- NULL
+DIAMESHORA3$SumaKitchenKW<- NULL
+DIAMESHORA3$SumaLaundryKW<- NULL
+DIAMESHORA3$SumaHeaterKW<- NULL
+DIAMESHORA3$Hora<- NULL
+DIAMESHORA3$DateTime<- NULL
+DIAMESHORA3<- distinct(DIAMESHORA3) 
+str(DIAMESHORA3)
+View(DIAMESHORA3)
+
+
+GRAPH365DAYS <- ggplot(DIAMESHORA3, aes(x=DiaDelAny, y=SumaDiaKW, colour=Any)) +
+  geom_point(alpha=.3) +
+  geom_smooth(alpha=.2, size=1) 
+GRAPH365DAYS
+
+####FINDING OUTLIERS BY...###
+boxplot(DIAMESHORA3$SumaDiaKW) #Consumption Outlier Rule
+
+
+####CHECKING CONSUMPTION PER HOUR ON EACH DAY OF THE WEEK###
+DIASEMANACTIVE<-household2%>% group_by(DiaSemana) %>% summarise(NewGlobalActive= sum(Global_ConsumptionKWh))
+DIASEMANACTIVE
+
+DIASEMANHORAACTIVE<-household2%>% group_by(DiaSemana, Hora) %>% summarise(NewGlobalActive= sum(Global_ConsumptionKWh))
+DIASEMANAHORACTIVE
+
+HORAACTIVE<-household2%>% group_by(Hora) %>% summarise(NewGlobalActive= sum(Global_ConsumptionKWh))
+HORAACTIVE
+
+household2$HourKWSum<-household2%>% group_by(Hora) %>% mutate(ActivePerHour= sum(Global_ConsumptionKWh))
+HORAACTIVE
+
+
+#2 Variables Bar plot
+ggplot(data=DIASEMANAHORAACTIVE, aes(x=DiaSemana, y=NewGlobalActive, fill = DiaSemana)) +
+  geom_bar(stat="identity")
+
+
+#3 Variables Bar plot
+ggplot(data=DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, fill=DiaSemana)) +
+  geom_bar(stat="identity", position=position_dodge())
+
+#Multiple Graphs
+#Line Graph WeekDay, Hour, Active Consumption#
+
+
+p1 <- ggplot(DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, colour=DiaSemana, group=DiaSemana)) +
+  geom_line() 
+p1
+
+#Line Graph WeekDay, Hour, Active Consumption with trends#
+p2 <- ggplot(DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, colour=DiaSemana)) +
+  geom_point(alpha=.3) +
+  geom_smooth(alpha=.2, size=1) 
+p2
+
+
+
+
+####To make two Columns of graphs### http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+#multiplot(p1, p2, p3, p4, cols=2)
+#> `geom_smooth()` using method = 'loess'
+
+
+#Submetering Graph#
+#plot(data_sub$DateTime, data_sub$Sub_metering_1,
+    # "n",
+    # xlab = "",
+     #ylab = "Energy sub metering")
+
+#points(data_sub$DateTime, data_sub$Sub_metering_1, type = "line")
+
+#points(data_sub$DateTime, data_sub$Sub_metering_2, type = "line", col = "red")
+
+#points(data_sub$DateTime, data_sub$Sub_metering_3, type = "line", col = "blue")
+
+#legend("topright",
+       #legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"),
+       #col = c("black", "red", "blue"),
+       #lty = c(1, 1, 1))
+
+#Line Graph WeekDay, Hour, Active Consumption with trends#
+
+
+
+# This must go after theme_bw
+
+
+
+
+
+
 
 ####PRE-GRAPHS####
 ###New Columns###
 household$Date <- as.Date(household$Date, "%d/%m/%Y")
 
-
-###Columns with same Energy Measuring Metrics###
-household<-household %>% mutate(Global_ConsumptionKWh=((household$Global_active_power)/60))
-household<-household %>% mutate(Global_Consumption_reactiveKWh=((household$Global_reactive_power)/60))
-household<-household %>% mutate(Submetter1_kwh=(household$Sub_metering_1/1000))
-household<-household %>% mutate(Submetter2_kwh=(household$Sub_metering_2/1000))
-household<-household %>% mutate(Submetter3_kwh=(household$Sub_metering_3/1000))
 
 
 
