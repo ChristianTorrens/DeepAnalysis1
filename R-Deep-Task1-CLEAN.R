@@ -18,7 +18,9 @@ install.packages("magrittr")
 install.packages("RColorBrewer")
 install.packages("grid")
 install.packages("zoo")
+install.packages("padr")
 
+library(padr)
 library(zoo)
 library(caret)
 library(tidyr)
@@ -50,6 +52,85 @@ household$DateTime <- with_tz(household$DateTime, "Europe/Paris")
 #household$Date<-as.POSIXct(household$DateTime,tz= "Europe/Paris" )
 str(household)
 
+####APPLY DAYLIGHT SAVINGS####
+#https://cran.r-project.org/web/packages/padr/vignettes/padr_implementation.html
+#Define a time Period#
+SET_2007_SummerTime  <- interval(ymd_hms('2007-03-25 2:00:00'), ymd_hms('2007-10-28 2:59:00'))
+SET_2007_WinterTime  <- interval(ymd_hms('2007-10-28 3:00:00'), ymd_hms('2008-03-25 1:59:00'))
+SET_2008_SummerTime  <- interval(ymd_hms('2008-03-25 2:00:00'), ymd_hms('2008-10-28 2:59:00'))
+SET_2008_WinterTime  <- interval(ymd_hms('2008-10-28 3:00:00'), ymd_hms('2009-03-25 1:59:00'))
+SET_2009_SummerTime  <- interval(ymd_hms('2009-03-25 2:00:00'), ymd_hms('2009-10-28 2:59:00'))
+SET_2009_WinterTime  <- interval(ymd_hms('2009-10-28 3:00:00'), ymd_hms('2010-03-25 1:59:00'))
+SET_2010_SummerTime  <- interval(ymd_hms('2010-03-25 2:00:00'), ymd_hms('2010-10-28 2:59:00'))
+SET_2010_WinterTime  <- interval(ymd_hms('2010-10-28 3:00:00'), ymd_hms('2011-03-25 1:59:00'))
+SET_2011_SummerTime  <- interval(ymd_hms('2011-03-25 2:00:00'), ymd_hms('2011-10-28 2:59:00'))
+
+####THE NEW FUNCTION WAS TAKING WAS TOO LONG TO RUN####
+#Daylight_func<- function(dia){
+  #if( dia %within% SET_2007_SummerTime) { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} 
+  #if( dia %within% SET_2007_WinterTime) {household$DateTime <- with_tz(household$DateTime,tz= "CET")}   
+  #if ( dia %within% SET_2008_SummerTime) { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} 
+  #if( dia %within% SET_2008_WinterTime) {household$DateTime <- with_tz(household$DateTime,tz= "CET")}  
+  #if ( dia %within% SET_2009_SummerTime) { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} 
+  #if( dia %within% SET_2009_WinterTime) {household$DateTime <- with_tz(household$DateTime,tz= "CET")}  
+  #if ( dia %within% SET_2010_SummerTime) { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} 
+  #if( dia %within% SET_2010_WinterTime) {household$DateTime <- with_tz(household$DateTime,tz= "CET")}  
+  #if ( dia %within% SET_2011_SummerTime) { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} 
+  #}
+
+#household$DateTime <- sapply(household$DateTime, Daylight_func)
+
+
+household$DateTime<- ifelse(household$DateTime %in% SET_2007_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} , 
+                            ifelse(household$DateTime %in% SET_2007_WinterTime,{household$DateTime <- with_tz(household$DateTime,tz= "CET")} ,
+                                   ifelse(household$DateTime %in% SET_2008_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
+                                          ifelse(household$DateTime %in% SET_2008_WinterTime,{household$DateTime <- with_tz(household$DateTime,tz= "CET")},
+                                                 ifelse(household$DateTime %in% SET_2009_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
+                                                        ifelse(household$DateTime %in% SET_2009_WinterTime, {household$DateTime <- with_tz(household$DateTime,tz= "CET")},
+                                                               ifelse(household$DateTime %in% SET_2010_SummerTime, { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ,
+                                                                      ifelse(household$DateTime %in% SET_2010_WinterTime, {household$DateTime <- with_tz(household$DateTime,tz= "CET")},
+                                                                             { household$DateTime <- with_tz(household$DateTime,tz= "CEST")} ))))))))
+
+
+####Checking that Changes summer to winter Hours and winter to Summer were properly made####
+household[141577,]$DateTime #Ok
+household[141576,]$DateTime
+
+
+which(household$DateTime == "2007-10-28 3:00:00") #OK
+household[454117,]$DateTime
+household[454056,]$DateTime
+as.POSIXct(1193536800, origin = "1970-01-01", tz = "Europe/Paris") #To see what the Seconds strip of time means in Date#
+as.POSIXct(1193533140, origin = "1970-01-01", tz = "Europe/Paris")
+
+which(household$DateTime == "2008-03-25 2:00:00")
+household[668617,]$DateTime
+household[668677,]$DateTime
+
+which(household$DateTime == "2008-10-28 3:00:00")
+household[981157,]$DateTime
+household[,]$DateTime
+
+which(household$DateTime == "2009-03-25 2:00:00")
+household[1194217,]$DateTime
+household[,]$DateTime
+
+which(household$DateTime == "2009-10-28 3:00:00")
+household[1506757,]$DateTime
+household[,]$DateTime
+
+which(household$DateTime == "2010-03-25 2:00:00")
+household[1719817,]$DateTime
+household[,]$DateTime
+
+
+which(household$DateTime == "2010-10-28 3:00:00")
+household[2032297,]$DateTime
+household[,]$DateTime
+
+
+
+
 ####Finding NAs####
 MatrixOfNAs<- filter(household, is.na(Global_active_power))
 RowsOfNAs<- which(is.na(household$Global_active_power))
@@ -60,10 +141,26 @@ sum(is.na(household))
 ####Replacing NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
 household$Global_active_power<- na.locf(household$Global_active_power, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
 sum(is.na(household$Global_active_power))#to see how many NA
+household$Global_reactive_power<- na.locf(household$Global_reactive_power, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+household$Voltage<- na.locf(household$Voltage, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+household$Global_intensity<- na.locf(household$Global_intensity, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+household$Sub_metering_1<- na.locf(household$Sub_metering_1, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+household$Sub_metering_2<- na.locf(household$Sub_metering_2, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+household$Sub_metering_3<- na.locf(household$Sub_metering_3, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
+
+
 
 ####Replacing rest of NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
 household$Global_active_power[is.na(household$Global_active_power)]<-0
 sum(is.na(household$Global_active_power))
+household$Global_reactive_power[is.na(household$Global_reactive_power)]<-0
+household$Global_intensity[is.na(household$Global_intensity)]<-0
+household$Voltage[is.na(household$Voltage)]<-0
+household$Sub_metering_1[is.na(household$Sub_metering_1)]<-0
+household$Sub_metering_2[is.na(household$Sub_metering_2)]<-0
+household$Sub_metering_3[is.na(household$Sub_metering_3)]<-0
+
+
 
 ####Create Month, Day, WeekDay, Season column####
 household$Hora <- hour(household$DateTime)
@@ -96,9 +193,6 @@ sum(is.na(household$SeasonWNames))
 household$Any<- year(household$DateTime)
 sum(is.na(household$Any))
 
-####Exclude NAs from the graphs####
-na.exclude(household)
-
 
 ####PRE-GRAPHS####
 ###New Columns###
@@ -112,7 +206,6 @@ household<-household %>% mutate(Submetter1_kwh=(household$Sub_metering_1/1000))
 household<-household %>% mutate(Submetter2_kwh=(household$Sub_metering_2/1000))
 household<-household %>% mutate(Submetter3_kwh=(household$Sub_metering_3/1000))
 
-household2<- na.exclude(household)
 
 
 #####CONSUMPTION REACTIVE PER SUM###
@@ -194,174 +287,19 @@ ggplot(data=household3_My2006, aes(household3_My2006$MonthAbb,group=1))+
   facet_wrap( ~ Any )
 #facet_grid(facets = Year ~ ., margins = FALSE) 
 
-####Cambio de hora#### #there is a function for that#
-household$DateTime<- dst(household$DateTime)
-
-
-####Finding NAs####
-OutOfHome<- filter(household, is.na(Global_active_power))
-TYPEOFNA<- which(is.na(household$Global_active_power))
-write.csv(TYPEOFNA, "typeofna.csv")
-
-sum(is.na(household))
-
-####Replacing NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
-household$Global_active_power<- na.locf(household$Global_active_power, na.rm = FALSE, fromLast = FALSE, maxgap = 180)
-
-####Replacing rest of NA´s of less than 3 hours. THOSE THAT ARE JUST ENERGY CUTS####
-is.na(household$Global_active_power)<- 0
 
 
 
-####Replacing NAs of several days out with 0####
-household[190498:194220,]$Global_active_power<- 0
-household[190498:194220,]$Global_reactive_power<- 0
-household[190498:194220,]$Global_intensity<- 0
-household[190498:194220,]$Voltage<- 0
-household[190498:194220,]$Sub_metering_1<- 0
-household[190498:194220,]$Sub_metering_2<- 0
-household[190498:194220,]$Sub_metering_3<- 0
-
-household[1309389:1312691,]$Global_active_power<- 0
-household[1309389:1312691,]$Global_reactive_power<- 0
-household[1309389:1312691,]$Global_intensity<- 0
-household[1309389:1312691,]$Voltage<- 0
-household[1309389:1312691,]$Sub_metering_1<- 0
-household[1309389:1312691,]$Sub_metering_2<- 0
-household[1309389:1312691,]$Sub_metering_3<- 0
-
-household[1397498:1398387,]$Global_active_power<- 0
-household[1397498:1398387,]$Global_reactive_power<- 0
-household[1397498:1398387,]$Global_intensity<- 0
-household[1397498:1398387,]$Voltage<- 0
-household[1397498:1398387,]$Sub_metering_1<- 0
-household[1397498:1398387,]$Sub_metering_2<- 0
-household[1397498:1398387,]$Sub_metering_3<- 0
-
-household[1616874:1620098,]$Global_active_power<- 0
-household[1616874:1620098,]$Global_reactive_power<- 0
-household[1616874:1620098,]$Global_intensity<- 0
-household[1616874:1620098,]$Voltage<- 0
-household[1616874:1620098,]$Sub_metering_1<- 0
-household[1616874:1620098,]$Sub_metering_2<- 0
-household[1616874:1620098,]$Sub_metering_3<- 0
-
-household[1712790:1714815,]$Global_active_power<- 0
-household[1712790:1714815,]$Global_reactive_power<- 0
-household[1712790:1714815,]$Global_intensity<- 0
-household[1712790:1714815,]$Voltage<- 0
-household[1712790:1714815,]$Sub_metering_1<- 0
-household[1712790:1714815,]$Sub_metering_2<- 0
-household[1712790:1714815,]$Sub_metering_3<- 0
-
-household[1929820:1990189,]$Global_active_power<- 0
-household[1929820:1990189,]$Global_reactive_power<- 0
-household[1929820:1990189,]$Global_intensity<- 0
-household[1929820:1990189,]$Voltage<- 0
-household[1929820:1990189,]$Sub_metering_1<- 0
-household[1929820:1990189,]$Sub_metering_2<- 0
-household[1929820:1990189,]$Sub_metering_3<- 0
-
-sum(is.na(household))
 
 
-####Replacing NAs with mean####
-#https://stackoverflow.com/questions/22916525/replace-na-with-previous-and-next-rows-mean-in-r
-ind <- which(is.na(household$Global_active_power))
-household$Global_active_power[ind] <- sapply(ind, function(i) with(household, c(Global_active_power[i+106])))
-household
 
 
-household$Global_active_power[ind] <- sapply(ind, function(i) with(household, c(Global_active_power[i+106])))
-
-#### first two terms####
-n1 = 0
-n2 = 1
-count = 1
-
-#### Set the Bucle####
-print(n2)
-for (i in vector) {
-  nth = n1 + n2
-  
-} { 
-  nth = n1 + n2
-  return (nth)
-  n1 = n2
-  n2 = nth
-  count = count + 1
-}
-
-
- sum(is.na(household$Global_active_power))
-
-
-household[41833,]$Global_active_power
-
-NA2<- which(is.na(household$Global_active_power))
-NA2
+####DO NOT USE THE CODE BELOW YET###
 
 ####SEASON SUBSETS#
 household %>% group_by(SeasonWNames) %>% summarise(mean(Global_active_power))
 NA2<- which(is.na(household$Global_active_power))
 NA2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-####Substitution of NAs by mean####
-
-####Month###
-household$Mes<-month(household$Date, label= TRUE, abbr = FALSE)
-household$Mes
-unique(household$Mes)
-sum(is.na(household$Mes))
-which(is.na(household$Mes))
-
-####Day###
-household$Dia<-day(household$Date)
-household$Dia
-unique(household$Dia)
-sum(is.na(household$Dia))
-
-####Creating a new column with the Weekday####
-household$DayOfWeek<- wday(household$Date, label = TRUE, abbr = FALSE)
-household$DayOfWeek
-unique(household$DayOfWeek)
-sum(is.na(household$DayOfWeek))
-
-####Creating a new column with the Season####
-
-####Substitution of NAs by mean####
-household$Global_active_power[is.na(household$Global_active_power)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Global_reactive_power[is.na(household$Global_reactive_power)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Global_intensity[is.na(household$Global_intensity)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Voltage[is.na(household$Voltage)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_1[is.na(household$Sub_metering_1)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_2[is.na(household$Sub_metering_2)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_3[is.na(household$Sub_metering_3)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-
-
-####Substitution of NAs by 0####
-household$Global_active_power[is.na(household$Global_active_power)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Global_reactive_power[is.na(household$Global_reactive_power)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Global_intensity[is.na(household$Global_intensity)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Voltage[is.na(household$Voltage)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_1[is.na(household$Sub_metering_1)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_2[is.na(household$Sub_metering_2)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-household$Sub_metering_3[is.na(household$Sub_metering_3)]<-mean(DatasetName$ColumnName,na.rm = TRUE)
-
-
 
 ####AHORA GRÁFICOS####
 ggplot(data=Data_Month, aes(Month)) +
@@ -398,90 +336,6 @@ ggplot(df, aes(x=date)) +
 
 
 
-
-
-
-
-####Show only hours####
-#household$DateTime2<- format(as.POSIXct(household$DateTime,format='%d/%m/%Y %H:%M:%S'),format='%d/%m/%Y %H')
-#household$DateTime2
-#View(household)
-
-####DO NOT USE####
-####Aggregate per hour####
-#household2<- household
-#household2$Date<- NULL
-#household2$Time<- NULL
-
-
-#str(household2)
-#household2<-aggregate(.~DateTime2,household2, FUN = sum)
-
-#ACTIVEPOWER <- aggregate(household$Global_active_power ~ DateTime2, data=household, FUN=sum)
-#ACTIVEPOWER
-
-#REACTIVEPOWER <- aggregate(household$Global_reactive_power ~ DateTime2, data=household, FUN=sum)
-#REACTIVEPOWER
-
-#SUBMETERING1 <- aggregate(household$Sub_metering_1 ~ DateTime2, data=household, FUN=mean)
-#SUBMETERING1
-
-#SUBMETERING2 <- aggregate(household$Sub_metering_2 ~ DateTime2, data=household, FUN=mean)
-#SUBMETERING2
-
-#SUBMETERING3 <- aggregate(household$Sub_metering_3 ~ DateTime2, data=household, FUN=mean)
-#SUBMETERING3
-
-#VOLT <- aggregate(household$Voltage ~ DateTime2, data=household, FUN=mean)
-#VOLT
-
-#INTENS <- aggregate(household$Global_intensity ~ DateTime2, data=household, FUN=mean)
-#INTENS
-
-#household2$Global_active_power<- NULL
-#household2$Global_reactive_power<- NULL
-#household2$Global_intensity<- NULL
-#household2$Voltage<- NULL
-#household2$Sub_metering_1<- NULL
-#household2$Sub_metering_2<- NULL
-#household2$Sub_metering_3<- NULL
-#household2$Active <- ACTIVEPOWER[,2]
-#household2$Reactive <- REACTIVEPOWER[,2]
-#household2$Sub1 <- SUBMETERING1[,2]
-#household2$Sub2 <- SUBMETERING2[,2]
-#household2$Sub3 <- SUBMETERING3[,2]
-#household2$Volt <- VOLT[,2]
-#household2$Intens <- INTENS[,2]
-#household2$Global_active_power<- NULL
-#household2$Global_reactive_power<- NULL
-#household2$Global_intensity<- NULL
-#household2$Voltage<- NULL
-#household2$Sub_metering_1<- NULL
-#household2$Sub_metering_2<- NULL
-#household2$Sub_metering_3<- NULL
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ####CREATING SUBSETS####
 ### 1. If it is Day of Week and Season###
 
@@ -493,8 +347,3 @@ WeekendsOut<-which(household$DiaSemana == 1 |
 
 
 household<-household[-WeekendsOut,]
-
-
-
-household$Season[household$Season==3] <- "Summer"
-household$Season[household$Season==4] <- "Fall"
