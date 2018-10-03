@@ -23,7 +23,9 @@ install.packages("padr")
 install.packages("ggalt")
 install.packages("taucharts")
 install.packages("doBy")
+install.packages("highcharter")
 
+library(highcharter)
 library(doBy)
 library(taucharts)
 library(ggalt)
@@ -45,8 +47,10 @@ library(bdvis)
 library(grid)
 
 options(digits=5)
-household <- read.csv("Dropbox/Ubiqum Master/Deep Analytics and Visualization/Task1_DefineDataScienceProject/household_power_consumption.txt", 
+setwd("~/Dropbox/Ubiqum Master/Deep Analytics and Visualization/Task1_DefineDataScienceProject")
+household <- read.csv("~/Dropbox/Ubiqum Master/Deep Analytics and Visualization/Task1_DefineDataScienceProject/household_power_consumption.txt", 
                       header=TRUE,sep=";",na.strings = c("?"))
+
 View(household)
 
 ####Dplyr DateTime####
@@ -164,19 +168,26 @@ household$Sub_metering_3[is.na(household$Sub_metering_3)]<-0
 sum(is.na(household))
 
 
-###Columns with SAME ENERGY MEASURING METRICS###
+####Columns with SAME ENERGY MEASURING METRICS####
 household<-household %>% mutate(Global_ConsumptionKWh=((household$Global_active_power)/60))
 household<-household %>% mutate(Global_Consumption_reactiveKWh=((household$Global_reactive_power)/60))
 household<-household %>% mutate(Submetter1_kwh=(household$Sub_metering_1/1000))
 household<-household %>% mutate(Submetter2_kwh=(household$Sub_metering_2/1000))
 household<-household %>% mutate(Submetter3_kwh=(household$Sub_metering_3/1000))
 
-####Create Month, Day, WeekDay, Season column####
+
+
+
+
+####Create Month,Week, Day, WeekDay,Season column####
 household$Hora <- hour(household$DateTime)
 sum(is.na(household$Hora))
 
 household$Mes <- month(household$Date)
 sum(is.na(household$Mes))
+
+household$Semana <- week(household$DateTime)
+sum(is.na(household$Semana))
 
 household$Dia <- day(household$DateTime)
 sum(is.na(household$Dia))
@@ -188,7 +199,7 @@ household$Season<- quarter(household$DateTime)
 sum(is.na(household$Season))
 
 
-####Creating a Column with the Names of the Season####
+###Creating a Column with the Names of the Season###
 household$SeasonWNames <-""
 household$SeasonWNames[household$Season == "1"] <- "Winter"
 household$SeasonWNames[household$Season == "2"] <- "Spring"
@@ -202,7 +213,7 @@ sum(is.na(household$SeasonWNames))
 household$Any<- year(household$DateTime)
 sum(is.na(household$Any))
 
-####LINEAR CORRELATION BETWEEN ATTRIBUTES TO DELETE SOME ALREADY AND SIMPLIFY ALL COMPUTING PROCESSES###
+####LINEAR CORRELATION BETWEEN ATTRIBUTES TO DELETE SOME ALREADY AND SIMPLIFY ALL COMPUTING PROCESSES####
 #TO DO HERE: Correlation Matrix#
 
 
@@ -215,7 +226,7 @@ sum(is.na(household$Any))
 
 
 
-####CREATING INITIAL SUBSETS###
+####CREATING A HOUSEHOLD 2 DATASET####
 #1s Merge the hours to reduce input#
 household2<- household #creating a new exact subset to be able to step backwards easily if needed
 household2$Global_active_power<- NULL
@@ -229,7 +240,7 @@ household2$Sub_metering_3<- NULL
 View(household2)
 str(household2)
 
-####HOUSEHOLD HISTOGRAM PER SEASON ###
+####HOUSEHOLD HISTOGRAM PER SEASON ####
 householdSeason<- household2
 
 householdSeason<- householdSeason%>% group_by(SeasonWNames)%>% mutate(SumaSeasonKW = sum(Global_ConsumptionKWh))
@@ -243,8 +254,11 @@ householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonL
 householdSeason<- householdSeason%>% group_by(SeasonWNames)%>%mutate(SumaSeasonHeaterKW = sum(Submetter3_kwh))
 
 householdSeasonGood<- householdSeason
+
   
 householdSeasonGood<- select(householdSeasonGood, Any, SeasonWNames,SumaSeasonKW,SumaSeasonReactiveKW,SumaSeasonLaundryKW,SumaSeasonHeaterKW )
+
+household
 
 View(householdSeasonGood)
 
@@ -256,94 +270,155 @@ ggplot(data=householdSeasonGood, aes(x=SeasonWNames, y=SumaSeasonKW, fill=Any)) 
   facet_wrap( ~ Any)+ geom_bar(stat="identity", position=position_dodge())
 
 
+####HOUSEHOLD HISTOGRAM PER MONTH ####
+
+householdMonth<- household2
+
+householdMonth<- householdMonth%>% group_by(Mes)%>% mutate(SumaMonthKW = sum(Global_ConsumptionKWh))
+
+householdMonth<- householdMonth%>% group_by(Mes)%>%mutate(SumaMonthReactiveKW = sum(Global_Consumption_reactiveKWh))
+
+householdMonth<- householdMonth%>% group_by(Mes)%>%mutate(SumaMonthKitchenKW = sum(Submetter1_kwh))
+
+householdMonth<- householdMonth%>% group_by(Mes)%>%mutate(SumaMonthLaundryKW = sum(Submetter2_kwh))
+
+householdMonth<- householdMonth%>% group_by(Mes)%>%mutate(SumaMonthHeaterKW = sum(Submetter3_kwh))
+
+householdMonthGood<- householdMonth
+
+householdMonthGood$MonthWNames <-""
+householdMonthGood$MonthWNames[household$Mes == "1"] <- "Jan"
+householdMonthGood$MonthWNames[household$Mes == "2"] <- "Feb"
+householdMonthGood$MonthWNames[household$Mes == "3"] <- "Mar"
+householdMonthGood$MonthWNames[household$Mes == "4"] <- "Apr"
+householdMonthGood$MonthWNames[household$Mes == "5"] <- "May"
+householdMonthGood$MonthWNames[household$Mes == "6"] <- "Jun"
+householdMonthGood$MonthWNames[household$Mes == "7"] <- "Jul"
+householdMonthGood$MonthWNames[household$Mes == "8"] <- "Aug"
+householdMonthGood$MonthWNames[household$Mes == "9"] <- "Sep"
+householdMonthGood$MonthWNames[household$Mes == "10"] <- "Oct"
+householdMonthGood$MonthWNames[household$Mes == "11"] <- "Nov"
+householdMonthGood$MonthWNames[household$Mes == "12"] <- "Dec"
+
+householdMonthGood<- select(householdMonthGood, Any, MonthWNames, Mes, SumaMonthKW,SumaMonthReactiveKW,SumaMonthLaundryKW,SumaMonthHeaterKW )
 
 
-####HOUSEHOLD OBSERVATIONS distribution ###
-household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>% mutate(SumaHoraKW = sum(Global_ConsumptionKWh))
+View(householdMonthGood)
+
+householdMonthGood<- distinct(householdMonthGood)
+
+####QUICK PLOTTING OF TOTAL CONSUMPTION PER SEASON### #http://www.cookbook-r.com
+ggplot(data=householdMonthGood, aes(x=MonthWNames, y=SumaMonthKW, fill=Any)) +
+  facet_wrap( ~ Any)+ geom_bar(stat="identity", position=position_dodge())
+
+ggplot(data=householdMonthGood, aes(x=MonthWNames , y=SumaMonthKW, group=Any, colour=Any)) +
+  geom_line()+theme_bw()+ geom_point()+facet_wrap(facets = Any ~ .)#, margins = FALSE)
+
+####HOUSEHOLD HISTOGRAM PER WEEK ####
+householdWeek<- household2
+
+householdWeek<- householdWeek%>% group_by(Semana)%>% mutate(SumaWeekKW = sum(Global_ConsumptionKWh))
+
+householdWeek<- householdWeek%>% group_by(Semana)%>%mutate(SumaWeekReKW = sum(Global_Consumption_reactiveKWh))
+
+householdWeek<- householdWeek%>% group_by(Semana)%>%mutate(SumaWeekKitchenKW = sum(Submetter1_kwh))
+
+householdWeek<- householdWeek%>% group_by(Semana)%>%mutate(SumaWeekLaundryKW = sum(Submetter2_kwh))
+
+householdWeek<- householdWeek%>% group_by(Semana)%>%mutate(SumaWeekHeaterKW = sum(Submetter3_kwh))
+
+householdWeekGood<- householdWeek
+
+householdWeekGood<- select(householdWeekGood, Any, Semana, Mes, SumaWeekKW,SumaWeekReKW,SumaWeekLaundryKW,SumaWeekHeaterKW )
+
+
+View(householdWeekGood)
+
+householdWeekGood<- distinct(householdWeekGood)
+
+unique(householdWeekGood$Semana)
+
+####QUICK PLOTTING OF TOTAL CONSUMPTION PER SEASON### #http://www.cookbook-r.com
+ggplot(data=householdWeekGood, aes(x=Semana, y=SumaWeekKW, fill=Any)) +
+  facet_wrap( ~ Any)+ geom_bar(stat="identity", position=position_dodge())
+
+ggplot(data=householdWeekGood, aes(x= Semana, y=SumaWeekKW, group=Any, colour=Any)) +
+  geom_line()+theme_bw()+ geom_point()+facet_wrap(facets = Any ~ .)#, margins = FALSE)
+
+
+####HOUSEHOLD HISTOGRAM WEEKDAY/PER MONTH ####
+householdWDayMonth<- household2
+
+householdWDayMonth<- householdWDayMonth%>% group_by(DiaSemana)%>% mutate(SumaWeekDayKW = sum(Global_ConsumptionKWh))
+
+householdWDayMonth<- householdWDayMonth%>% group_by(DiaSemana)%>%mutate(SumaWeekDayReKW = sum(Global_Consumption_reactiveKWh))
+
+householdWDayMonth<- householdWDayMonth%>% group_by(DiaSemana)%>%mutate(SumaWeekDayKitchenKW = sum(Submetter1_kwh))
+
+householdWDayMonth<- householdWDayMonth%>% group_by(DiaSemana)%>%mutate(SumaWeekDayLaundryKW = sum(Submetter2_kwh))
+
+householdWDayMonth<- householdWDayMonth%>% group_by(DiaSemana)%>%mutate(SumaWeekDayHeaterKW = sum(Submetter3_kwh))
+
+householdWDayMonthGood<- householdWDayMonth
+
+householdWDayMonthGood<- select(householdWDayMonthGood, Any, DiaSemana, Mes, SumaWeekDayKW,SumaWeekDayReKW,SumaWeekDayKitchenKW,SumaWeekDayLaundryKW,SumaWeekDayHeaterKW )
+
+
+View(householdWDayMonthGood)
+
+householdWDayMonthGood<- distinct(householdWDayMonthGood)
+
+unique(householdWDayMonthGood$DiaSemana)
+
+####QUICK PLOTTING OF TOTAL CONSUMPTION PER SEASON### #http://www.cookbook-r.com
+ggplot(data=householdWDayMonthGood, aes(x= DiaSemana, y=SumaWeekDayKW, group= Mes, colour=Mes)) +
+  geom_line()+theme_bw()+ geom_point()+facet_wrap(facets = Mes ~ .)#, margins = FALSE)
+
+####Prep: Collapsing Consumptions into Hours ####
+householdHOUR<- household2
+householdHOUR<- householdHOUR%>% group_by(Any,Mes,Dia,Hora)%>% mutate(SumaHoraKW = sum(Global_ConsumptionKWh))
                                                            
-household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHoraReKW = sum(Global_Consumption_reactiveKWh))
+householdHOUR<- householdHOUR%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHoraReKW = sum(Global_Consumption_reactiveKWh))
 
-household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaKitchenKW = sum(Submetter1_kwh))
+householdHOUR<- householdHOUR%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaKitchenKW = sum(Submetter1_kwh))
 
-household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaLaundryKW = sum(Submetter2_kwh))
+householdHOUR<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaLaundryKW = sum(Submetter2_kwh))
 
-household2<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHeaterKW = sum(Submetter3_kwh))
+householdHOUR<- household2%>% group_by(Any,Mes,Dia,Hora)%>%mutate(SumaHeaterKW = sum(Submetter3_kwh))
 
-unique(household2$SumaHoraKW)
-unique(household2$SumaHoraReKW)
-unique(household2$SumaKitchenKW)
-unique(household2$SumaLaundryKW)
-unique(household2$SumaHeaterKW)
+unique(householdHOUR$SumaHoraKW)
+unique(householdHOUR$SumaHoraReKW)
+unique(householdHOUR$SumaKitchenKW)
+unique(householdHOUR$SumaLaundryKW)
+unique(householdHOUR$SumaHeaterKW)
 
-DIAMESHORA<- household2
-str(DIAMESHORA)
+str(householdHOUR)
 
-View(DIAMESHORA)
+View(householdHOUR)
 
-DIAMESHORA<- select(DIAMESHORA, DateTime, Any, Hora, Mes, Dia,DiaSemana,SumaHoraKW,SumaHoraReKW,SumaKitchenKW,SumaLaundryKW,SumaHeaterKW)
-str(DIAMESHORA)
-View(DIAMESHORA)
-
-DIAMESHORA2<- DIAMESHORA
-DIAMESHORA2$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H:%M:%S'),format='%m/%d/%Y %H') #to collapse all Date Times per hour
-DIAMESHORA2<-distinct(DIAMESHORA2)
-DIAMESHORA2
-
-DIAMESHORA2$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H'),format='%m/%d/%Y %H:%M:%S')  #To give DateTime a time format again
-
-DIAMESHORA2$DateTime <- with_tz(DIAMESHORA2$DateTime, "Europe/Paris")
-names(DIAMESHORA2)
-View(DIAMESHORA2)
+householdHOUR<- select(householdHOUR, Any, Hora, Mes, Dia,DiaSemana,SumaHoraKW,SumaHoraReKW,SumaKitchenKW,SumaLaundryKW,SumaHeaterKW)
+householdHOUR<-distinct(householdHOUR)
+str(householdHOUR)
+View(householdHOUR)
 
 
 
-#Multiple Graphs
-#Line Graph WeekDay, Hour, Active Consumption#
-####Need to put All Hours into Days####
-####Then the Days should be out of 365####
+####CHECKING PER HOUR WITHIN DAY OF WEEK####
 DIAMESHORA3<- DIAMESHORA2
 DIAMESHORA3$DateTime<- format(as.POSIXct(DIAMESHORA2$DateTime,format='%m/%d/%Y %H'),format='%m/%d/%Y')  #To give DateTime a time format again
 DIAMESHORA3<- select(DIAMESHORA,DateTime, Any, Hora, Mes, Dia,DiaSemana,SumaHoraKW,SumaHoraReKW,SumaKitchenKW,SumaLaundryKW,SumaHeaterKW)
 DIAMESHORA3<- distinct(DIAMESHORA3) 
 
+DIAMESHORAGOOD<-DIAMESHORA3
 
-DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKW = sum(SumaHoraKW))
-DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaReKW = sum(SumaHoraReKW))
-DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKitchen = sum(SumaKitchenKW))
-DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaLaundry = sum(SumaLaundryKW))
-DIAMESHORA3<- DIAMESHORA3%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaHeater = sum(SumaHeaterKW))
-
-
-
-DIAMESHORA3$DiaDelAny<-""
-DIAMESHORA3$DiaDelAny<- strftime(DIAMESHORA3$DateTime, format = "%j")####to see which Day of the year it is
-
-unique(DIAMESHORA3$DiaDelAny)
-DIAMESHORA3$DiaDelAny<-as.numeric(DIAMESHORA3$DiaDelAny)
+DIAMESHORAGOOD<- DIAMESHORAGOOD%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKW = sum(SumaHoraKW))
+DIAMESHORAGOOD<- DIAMESHORAGOOD%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaReKW = sum(SumaHoraReKW))
+DIAMESHORAGOOD<- DIAMESHORAGOOD%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaKitchen = sum(SumaKitchenKW))
+DIAMESHORAGOOD<- DIAMESHORAGOOD%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaLaundry = sum(SumaLaundryKW))
+DIAMESHORAGOOD<- DIAMESHORAGOOD%>% group_by(Any,Mes,Dia)%>% mutate(SumaDiaHeater = sum(SumaHeaterKW))
 
 
-DIAMESHORA3$SumaHoraKW<- NULL
-DIAMESHORA3$SumaHoraReKW<- NULL
-DIAMESHORA3$SumaKitchenKW<- NULL
-DIAMESHORA3$SumaLaundryKW<- NULL
-DIAMESHORA3$SumaHeaterKW<- NULL
-DIAMESHORA3$Hora<- NULL
-DIAMESHORA3$DateTime<- NULL
-DIAMESHORA3<- distinct(DIAMESHORA3) 
-str(DIAMESHORA3)
-View(DIAMESHORA3)
-
-
-GRAPH365DAYS <- ggplot(DIAMESHORA3, aes(x=DiaDelAny, y=SumaDiaKW, colour=Any)) +
-  geom_point(alpha=.3) +
-  geom_smooth(alpha=.2, size=1) 
-GRAPH365DAYS
-
-####FINDING OUTLIERS BY...###
-boxplot(DIAMESHORA3$SumaDiaKW) #Consumption Outlier Rule
-
-
-####CHECKING CONSUMPTION PER HOUR ON EACH DAY OF THE WEEK###
+####GRAPHS CONSUMPTION PER HOUR ON EACH DAY OF THE WEEK####
 DIASEMANACTIVE<-household2%>% group_by(DiaSemana) %>% summarise(NewGlobalActive= sum(Global_ConsumptionKWh))
 DIASEMANACTIVE
 
@@ -366,10 +441,8 @@ ggplot(data=DIASEMANAHORAACTIVE, aes(x=DiaSemana, y=NewGlobalActive, fill = DiaS
 ggplot(data=DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, fill=DiaSemana)) +
   geom_bar(stat="identity", position=position_dodge())
 
-#Multiple Graphs
+##ultiple Graphs
 #Line Graph WeekDay, Hour, Active Consumption#
-
-
 p1 <- ggplot(DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, colour=DiaSemana, group=DiaSemana)) +
   geom_line() 
 p1
@@ -379,6 +452,80 @@ p2 <- ggplot(DIASEMANHORAACTIVE, aes(x=Hora, y=NewGlobalActive, colour=DiaSemana
   geom_point(alpha=.3) +
   geom_smooth(alpha=.2, size=1) 
 p2
+
+
+
+
+####365 Days per Year####
+DIAMES<- household2
+DIAMES$DiaDelAny<-""
+
+DIAMES$DiaDelAny<- strftime(DIAMES$DateTime, format = "%j", tz = "Europe/Paris")####to see which Day of the year it is
+DIAMES$DiaDelAny<-as.numeric(DIAMES$DiaDelAny)
+
+DIAMES<- DIAMES%>% group_by(DiaDelAny)%>% mutate(SumaDayKW = sum(SumaHoraKW))
+
+DIAMES<- DIAMES%>% group_by(DiaDelAny)%>%mutate(SumaDayReKW = sum(SumaHoraReKW))
+
+DIAMES<- DIAMES%>% group_by(DiaDelAny)%>%mutate(SumaDayKitchenKW = sum(SumaKitchenKW))
+
+DIAMES<- DIAMES%>% group_by(DiaDelAny)%>%mutate(SumaDayLaundryKW = sum(SumaLaundryKW))
+
+DIAMES<- DIAMES%>% group_by(DiaDelAny)%>%mutate(SumaDayHeaterKW = sum(SumaHeaterKW))
+
+
+View(DIAMES)
+
+unique(DIAMES$SumaDayKW)
+unique(DIAMES$SumaDayReKW)
+unique(DIAMES$SumaDayKitchenKW)
+unique(DIAMES$SumaDayLaundryKW)
+unique(DIAMES$SumaDayHeaterKW)
+unique(DIAMES$DiaDelAny)
+
+
+DIAMES$SumaHoraKW<- NULL
+DIAMES$SumaHoraReKW<- NULL
+DIAMES$SumaKitchenKW<- NULL
+DIAMES$SumaLaundryKW<- NULL
+DIAMES$SumaHeaterKW<- NULL
+DIAMES$Hora<- NULL
+DIAMES$Time<- NULL
+DIAMES$DateTime<- NULL
+DIAMESHORA3<- distinct(DIAMESHORA3) 
+
+str(DIAMESHORA3)
+View(DIAMESHORA3)
+
+ggplot(data=DIAMES, aes(x=DiaDelAny , y=SumaDayKW, group=Any, colour=Any)) +
+  geom_line()+theme_bw()+ geom_point()+facet_wrap(facets = Any ~ .)#, margins = FALSE)
+
+p1 <- ggplot(DIAMES, aes(x=DiaDelAny, y=SumaDayKW, colour=Any, group=Any)) +
+  geom_line() 
+p1
+
+
+
+####REACTIVE vs ACTIVE ENERGY####
+
+
+
+
+
+
+
+####ENERGY CONSUMPTION PER MONTH####
+ggplot(data=household_MONTHYEAR, aes(household_MONTHYEAR$MonthAbb, group=1))+
+  #geom_line(aes(y = HPC_My2006$Submetter1_kwh, color="Kitchen")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter2_kwh, color="Laundry Room")) + 
+  #geom_line(aes(y = HPC_My2006$Submetter3_kwh, color="Heater")) + 
+  geom_line(aes(y = household_MONTHYEAR$Global_ConsumptionKWh, color="Active_Power"))+
+  geom_line(aes(y = household_MONTHYEAR$Global_Consumption_reactiveKWh, color="Reactive_Power"))+
+  xlab("Year")+
+  ylab("KWh")+
+  ggtitle("Energy Consumption by Month")+
+  scale_y_continuous(labels = function(x) format(x, scientific =FALSE))+
+  facet_wrap( ~ Any)
 
 
 
@@ -409,18 +556,7 @@ p2
 
 
 
-# This must go after theme_bw
-
-
-
-
-
-
-
-####PRE-GRAPHS####
-###New Columns###
-household$Date <- as.Date(household$Date, "%d/%m/%Y")
-
+# This must go after theme_b
 
 
 
@@ -434,6 +570,30 @@ household_MONTHYEAR<-household2 %>% select(Any,Mes,Global_active_power, Global_r
                funs(sum))
 
 ####June per hour each Year####
+DIAMESHORA3$SumaHoraKW<- NULL
+DIAMESHORA3$SumaHoraReKW<- NULL
+DIAMESHORA3$SumaKitchenKW<- NULL
+DIAMESHORA3$SumaLaundryKW<- NULL
+DIAMESHORA3$SumaHeaterKW<- NULL
+DIAMESHORA3$Hora<- NULL
+DIAMESHORA3$DateTime<- NULL
+DIAMESHORA3<- distinct(DIAMESHORA3) 
+str(DIAMESHORA3)
+View(DIAMESHORA3)
+
+
+####FINDING OUTLIERS BY DAY####
+boxplot(DIAMESHORA3$SumaDiaKW) #Consumption Outlier Rule
+boxplot(DIAMESHORA3$SumaDiaReKW) #Reactive Outlier Rule
+boxplot(DIAMESHORA3$SumaKitchenKW) #Kitchen Outlier Rule
+boxplot(DIAMESHORA3$SumaLaundryKW) #Laundry Outlier Rule
+boxplot(DIAMESHORA3$SumaHeaterKW) #Heater Outlier Rule
+
+
+
+
+
+
 household3_hour<-household2 %>% select(Any,Mes,Hora,Global_ConsumptionKWh,Global_Consumption_reactiveKWh,
                            Sub_metering_3,Submetter3_kwh,
                            Submetter2_kwh,Submetter1_kwh) %>%
